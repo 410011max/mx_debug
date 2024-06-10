@@ -1,21 +1,12 @@
 import torch
 import os
 
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-)
+from transformers import AutoModelForCausalLM
+
 import argparse
 
-from calibration import get_act_acales
-
-
-def build_model_and_tokenizer(model_name, mx, device):
-    tokenizer = AutoTokenizer.from_pretrained(model_name, model_max_length=2048)
-    kwargs = {"torch_dtype": torch.float32 if mx else torch.float16, "device_map": device}
-    print(f"Using {kwargs['torch_dtype']} on {kwargs['device_map']}")
-    model = AutoModelForCausalLM.from_pretrained(model_name, **kwargs)
-    return model, tokenizer
+from datautils import get_loaders
+from hook import get_act_stats_llama
 
 
 def parse_args():
@@ -24,8 +15,8 @@ def parse_args():
                         default='meta-llama/Llama-2-7b-hf', help='model name')
     parser.add_argument('--output-path', type=str, default='act_scales/llama2-7b-hf.pt',
                         help='where to save the act scales')
-    parser.add_argument('--num-samples', type=int, default=1)
-    parser.add_argument('--seq-len', type=int, default=2048)
+    parser.add_argument('--nsamples', type=int, default=1)
+    parser.add_argument('--seqlen', type=int, default=2048)
 
     # microxscaling settings
     parser.add_argument("--mx", action="store_true", help="Whether to use microxcaling")
@@ -43,7 +34,13 @@ def parse_args():
 @torch.no_grad()
 def main():
     args = parse_args()
-    model, tokenizer = build_model_and_tokenizer(args.model_name, args.mx, args.device)
+    model = AutoModelForCausalLM.from_pretrained(args.model_name, 
+                                                 torch_dtype=torch.float32,
+                                                 device_map="cpu")
+    model.seqlen = args.seqlen
+    dataloader, testloader = get_loaders(
+        "wikitext2", nsamples=args.nsamples, seed=42, model=args.model_name, seqlen=model.seqlen
+    )
 
     if (args.mx):
         print("Using microxscaling dataformat.")
@@ -61,7 +58,8 @@ def main():
         mx_mapping.inject_pyt_ops(mx_specs)
 
 
-    act_scales = get_act_acales(model, tokenizer, args.num_samples, args.seq_len)
+    act_scales = get_act_stats_llama(model, dataloader, args.device)
+
 
     os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
     torch.save(act_scales, args.output_path)
