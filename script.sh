@@ -1,6 +1,6 @@
 # original
 CUDA_VISIBLE_DEVICES=0 \
-python generate_act_scales.py \
+python main.py \
     --model-name meta-llama/Llama-2-7b-hf \
     --output-path act_scales/llama2-7b-hf.pt \
     --nsamples 1 \
@@ -9,7 +9,7 @@ python generate_act_scales.py \
 
 # mx version
 CUDA_VISIBLE_DEVICES=0 \
-python generate_act_scales.py \
+python main.py \
     --model-name meta-llama/Llama-2-7b-hf \
     --output-path act_scales/llama2-7b-hf-mx.pt \
     --nsamples 1 \
