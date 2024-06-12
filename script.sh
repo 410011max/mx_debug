@@ -16,4 +16,11 @@ python main.py \
     --seqlen 1 \
     --device cpu \
     --mx --mx_format fp4_e2m1 --mx_block_size 32
-    
+
+
+# single linear
+python single_linear.py
+
+# single linear (mx version)
+python single_linear.py \
+    --mx --mx_format fp4_e2m1 --mx_block_size 32
